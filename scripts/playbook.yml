@@ -6,11 +6,16 @@
       hostname:
         name: miqdev
     - name: install OS elements
-      dnf: name=* state=latest
+      yum: name=* state=latest
+    - name: install epel-release
+      yum:
+        name: epel-release
+        state: latest
+    - name: set up node.js epel repository
+      command: curl --silent --location https://rpm.nodesource.com/setup_8.x | sudo bash -
     - name: install OS packages for development
-      dnf: name={{ item }} state=latest
+      yum: name={{ item }} state=latest
       with_items:
-        - dnf-plugins-core
         - git-all
         - memcached
         - postgresql-devel
@@ -18,7 +23,7 @@
         - bzip2 
         - libffi-devel
         - readline-devel
-        - libxml
+        - libxml2
         - libxml2-devel
         - libxslt-devel
         - patch
@@ -26,7 +31,6 @@
         - nodejs
         - gcc-c++
         - libcurl-devel
-        - npm
         - openssl-devel
         - cmake
         - python-psycopg2
@@ -72,20 +76,10 @@
       lineinfile: dest=~/.bashrc line='export RBENV_VERSION="{{ ruby_version }}"'
     - name: install ruby version {{ ruby_version }}
       shell: rbenv install -s {{ ruby_version }}
-- hosts: all
-  become: true
-  tasks:
-    - name: verify if we need to reboot
-      command: dnf needs-restarting
-      register: reboot_needed
-    - name: reboot machine
-      shell: shutdown -t 5 -r now "Rebooting as the appliance needs restarting"
-      async: 0
-      poll: 0
-      ignore_errors: yes
-      when: reboot_needed.stdout != ""
-    - name: waiting for server to come back
-      wait_for_connection:
-        delay: 60
-        timeout: 300
+    - name: git clone manageiq-core
+      git: repo=https://github.com/manageiq/manageiq.git dest=~/manageiq
+    - name: buid manageiq
+      shell: bin/setup
+      args:
+        chdir: ~/manageiq
 ...
